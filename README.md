@@ -34,3 +34,13 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Anthropic API key
+
+Create a `.env.local` file in the project root and set your Anthropic API key:
+
+```
+ANTHROPIC_API_KEY=sk-...
+```
+
+The app will send image and application data to `/api/verify` which keeps the API key server-side.

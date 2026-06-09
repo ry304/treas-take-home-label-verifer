@@ -1,269 +1,226 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
+import React, { useState } from "react";
 
-type FieldResult = {
-  pass: boolean;
-  text: string;
-};
-
-type VerificationResult = {
-  brandName?: FieldResult;
-  classType?: FieldResult;
-  alcoholContent?: FieldResult;
-  netContents?: FieldResult;
-  bottlerNameAddress?: FieldResult;
-  countryOfOrigin?: FieldResult;
-  governmentWarning?: FieldResult;
-};
-
-type QueueItem = {
-  id: string;
+type Application = {
   brandName: string;
-  imageName: string;
-  application: Record<string, string>;
-  images: string[];
-  status: 'pending' | 'processing' | 'done' | 'error';
-  result?: VerificationResult;
-  error?: string;
+  classType: string;
+  alcoholContent: string;
+  netContents: string;
+  bottlerNameAddress: string;
+  countryOfOrigin: string;
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  brandName: 'Brand Name',
-  classType: 'Class / Type',
-  alcoholContent: 'Alcohol Content',
-  netContents: 'Net Contents',
-  bottlerNameAddress: 'Bottler Name & Address',
-  countryOfOrigin: 'Country of Origin',
-  governmentWarning: 'Government Warning',
-};
+type FieldResult = { pass: boolean; text: string };
 
 export default function Home() {
-  const [form, setForm] = useState({
-    brandName: '',
-    classType: '',
-    alcoholContent: '',
-    netContents: '',
-    bottlerNameAddress: '',
-    countryOfOrigin: '',
+  const [app, setApp] = useState<Application>({
+    brandName: "",
+    classType: "",
+    alcoholContent: "",
+    netContents: "",
+    bottlerNameAddress: "",
+    countryOfOrigin: "",
   });
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [queue, setQueue] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  function updateField<K extends keyof Application>(k: K, v: string) {
+    setApp((s) => ({ ...s, [k]: v }));
+  }
 
-  const toBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  function handleFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files;
+    if (!f) return;
+    setFiles(Array.from(f));
+  }
+
+  function addToQueue() {
+    if (files.length === 0) return alert("Please attach at least one label image.");
+    setQueue((q) => [
+      ...q,
+      {
+        id: Date.now() + Math.random(),
+        application: { ...app },
+        files,
+        status: "queued",
+        result: null,
+      },
+    ]);
+    // Reset form for next entry
+    setApp({ brandName: "", classType: "", alcoholContent: "", netContents: "", bottlerNameAddress: "", countryOfOrigin: "" });
+    setFiles([]);
+    (document.getElementById("file-input") as HTMLInputElement | null)?.value && ((document.getElementById("file-input") as HTMLInputElement).value = "");
+  }
+
+  async function fileToDataUrl(file: File) {
+    return await new Promise<string>((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result));
+      r.onerror = rej;
+      r.readAsDataURL(file);
     });
+  }
 
-  const addToQueue = async () => {
-    if (!files || files.length === 0) return;
-    const images = await Promise.all(Array.from(files).map(toBase64));
-    const item: QueueItem = {
-      id: crypto.randomUUID(),
-      brandName: form.brandName || '(no brand)',
-      imageName: files[0].name,
-      application: { ...form },
-      images,
-      status: 'pending',
-    };
-    setQueue((q) => [...q, item]);
-    setForm({ brandName: '', classType: '', alcoholContent: '', netContents: '', bottlerNameAddress: '', countryOfOrigin: '' });
-    setFiles(null);
-    if (fileRef.current) fileRef.current.value = '';
-  };
-
-  const processQueue = async () => {
+  async function processQueue() {
     setProcessing(true);
-    for (const item of queue) {
-      if (item.status !== 'pending') continue;
-      setQueue((q) => q.map((i) => i.id === item.id ? { ...i, status: 'processing' } : i));
+    const newQueue = [...queue];
+    for (let i = 0; i < newQueue.length; i++) {
+      const item = newQueue[i];
+      if (item.status === "done") continue;
+      newQueue[i] = { ...item, status: "processing" };
+      setQueue([...newQueue]);
+
       try {
-        const res = await fetch('/api/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ application: item.application, images: item.images }),
+        const images = await Promise.all(item.files.map((f: File) => fileToDataUrl(f)));
+        const res = await fetch("/api/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ application: item.application, images }),
         });
         const data = await res.json();
-        if (data.result) {
-          setQueue((q) => q.map((i) => i.id === item.id ? { ...i, status: 'done', result: data.result } : i));
-        } else {
-          setQueue((q) => q.map((i) => i.id === item.id ? { ...i, status: 'error', error: data.error || data.raw || 'Unknown error' } : i));
-        }
-      } catch (err: unknown) {
-        setQueue((q) => q.map((i) => i.id === item.id ? { ...i, status: 'error', error: String(err) } : i));
+        newQueue[i] = { ...newQueue[i], status: "done", result: data };
+        setQueue([...newQueue]);
+      } catch (e: any) {
+        newQueue[i] = { ...newQueue[i], status: "error", result: { error: e?.message || String(e) } };
+        setQueue([...newQueue]);
       }
     }
     setProcessing(false);
+  }
+
+  function renderResult(result: any) {
+    if (!result) return null;
+    if (result.error) return <div style={{ color: "#b91c1c" }}>Error: {String(result.error)}</div>;
+    const r = result.result || result.raw || result;
+    if (result.raw && !result.result) {
+      return (
+        <pre style={{ whiteSpace: "pre-wrap", fontSize: 12, background: "#f3f4f6", padding: 8, borderRadius: 4 }}>{String(result.raw)}</pre>
+      );
+    }
+
+    const rows = Object.entries(r);
+    return (
+      <div>
+        {rows.map(([k, v]: any, idx: number) => {
+          const bg = idx % 2 === 0 ? "#ffffff" : "#f1f5f9";
+          const pass = v?.pass;
+          return (
+            <div key={k} style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 12px", background: bg, borderRadius: 4, marginBottom: 6 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 18, background: pass ? "#16a34a" : "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700 }}>
+                {pass ? "âœ“" : "âœ•"}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{k}</div>
+                <div style={{ fontSize: 13, color: "#374151" }}>{v?.text}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const styles: Record<string, React.CSSProperties> = {
+    page: { backgroundColor: "#f8f9fb", minHeight: "100vh", fontFamily: "Arial, Helvetica, sans-serif", padding: 24 },
+    container: { maxWidth: 980, margin: "0 auto", background: "#ffffff", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
+    header: { backgroundColor: "#1a2744", color: "#ffffff", padding: "18px 20px" },
+    headerTitle: { fontSize: 18, fontWeight: 700 },
+    headerSub: { fontSize: 14, color: "#c8a951", marginTop: 6, fontWeight: 700 },
+    body: { padding: 20 },
+    section: { marginBottom: 18, borderRadius: 4, overflow: "hidden" },
+    sectionHeader: { backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 },
+    sectionBody: { padding: 12 },
+    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
+    label: { display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", marginBottom: 6, color: "#1f2937" },
+    input: { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 16 },
+    buttonPrimary: { backgroundColor: "#1a2744", color: "#fff", padding: "10px 14px", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
+    buttonAccent: { backgroundColor: "#c8a951", color: "#10213a", padding: "10px 14px", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
+    queueItem: { padding: 12, border: "1px solid #e6eef8", borderRadius: 4, marginBottom: 10, background: "#ffffff" },
+    footer: { padding: 12, textAlign: "center", fontSize: 12, color: "#6b7280", background: "#f1f5f9", marginTop: 12 },
   };
 
-  const pendingCount = queue.filter((i) => i.status === 'pending').length;
-
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fb', fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <header style={{ backgroundColor: '#1a2744', borderBottom: '4px solid #c8a951' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 32px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 40, height: 40, backgroundColor: '#c8a951', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 20 }}>???</span>
-          </div>
-          <div>
-            <div style={{ color: '#c8a951', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>U.S. Department of the Treasury — TTB</div>
-            <div style={{ color: '#ffffff', fontSize: 20, fontWeight: 700, letterSpacing: '-0.01em' }}>Label Compliance Verifier</div>
-          </div>
-        </div>
-      </header>
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <div style={styles.headerTitle}>U.S. Department of the Treasury â€” TTB</div>
+          <div style={styles.headerSub}>Label Compliance Verifier</div>
+        </header>
 
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
-        <section style={{ backgroundColor: '#ffffff', border: '1px solid #dde1e9', borderRadius: 8, marginBottom: 24, overflow: 'hidden' }}>
-          <div style={{ backgroundColor: '#f0f2f7', borderBottom: '1px solid #dde1e9', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 24, height: 24, backgroundColor: '#1a2744', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#c8a951', fontSize: 12, fontWeight: 700 }}>1</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1a2744', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Application Data</span>
-          </div>
-          <div style={{ padding: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-              {[
-                { name: 'brandName', label: 'Brand Name', placeholder: 'e.g. OLD TOM DISTILLERY' },
-                { name: 'classType', label: 'Class / Type', placeholder: 'e.g. Kentucky Straight Bourbon Whiskey' },
-                { name: 'alcoholContent', label: 'Alcohol Content', placeholder: 'e.g. 45% Alc./Vol. (90 Proof)' },
-                { name: 'netContents', label: 'Net Contents', placeholder: 'e.g. 750 mL' },
-              ].map((field) => (
-                <div key={field.name}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{field.label}</label>
-                  <input
-                    name={field.name}
-                    value={form[field.name as keyof typeof form]}
-                    onChange={handleChange}
-                    placeholder={field.placeholder}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #dde1e9', borderRadius: 4, fontSize: 14, color: '#1a2744', backgroundColor: '#ffffff', outline: 'none', boxSizing: 'border-box' }}
-                  />
+        <main style={styles.body}>
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>1 â€¢ Application Data</div>
+            <div style={styles.sectionBody}>
+              <div style={styles.grid2}>
+                <div>
+                  <label style={styles.label}>Brand Name</label>
+                  <input style={styles.input} placeholder="Brand Name" value={app.brandName} onChange={(e) => updateField("brandName", e.target.value)} />
                 </div>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {[
-                { name: 'bottlerNameAddress', label: 'Bottler Name & Address', placeholder: 'e.g. Old Tom Distillery, Louisville, KY 40202' },
-                { name: 'countryOfOrigin', label: 'Country of Origin', placeholder: 'e.g. USA' },
-              ].map((field) => (
-                <div key={field.name}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{field.label}</label>
-                  <input
-                    name={field.name}
-                    value={form[field.name as keyof typeof form]}
-                    onChange={handleChange}
-                    placeholder={field.placeholder}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #dde1e9', borderRadius: 4, fontSize: 14, color: '#1a2744', backgroundColor: '#ffffff', outline: 'none', boxSizing: 'border-box' }}
-                  />
+                <div>
+                  <label style={styles.label}>Class / Type</label>
+                  <input style={styles.input} placeholder="Class/Type" value={app.classType} onChange={(e) => updateField("classType", e.target.value)} />
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        <section style={{ backgroundColor: '#ffffff', border: '1px solid #dde1e9', borderRadius: 8, marginBottom: 24, overflow: 'hidden' }}>
-          <div style={{ backgroundColor: '#f0f2f7', borderBottom: '1px solid #dde1e9', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ width: 24, height: 24, backgroundColor: '#1a2744', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#c8a951', fontSize: 12, fontWeight: 700 }}>2</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1a2744', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Label Image</span>
-          </div>
-          <div style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} style={{ fontSize: 14, color: '#4a5568' }} />
-            <button
-              onClick={addToQueue}
-              disabled={!files || files.length === 0}
-              style={{ padding: '10px 24px', backgroundColor: files && files.length > 0 ? '#1a2744' : '#a0aab8', color: '#ffffff', border: 'none', borderRadius: 4, fontSize: 14, fontWeight: 600, cursor: files && files.length > 0 ? 'pointer' : 'not-allowed', letterSpacing: '0.04em' }}
-            >
-              Add to Queue
-            </button>
-          </div>
-        </section>
+                <div>
+                  <label style={styles.label}>Alcohol Content</label>
+                  <input style={styles.input} placeholder="Alcohol Content (e.g., 40% ABV)" value={app.alcoholContent} onChange={(e) => updateField("alcoholContent", e.target.value)} />
+                </div>
+                <div>
+                  <label style={styles.label}>Net Contents</label>
+                  <input style={styles.input} placeholder="Net Contents (e.g., 750 mL)" value={app.netContents} onChange={(e) => updateField("netContents", e.target.value)} />
+                </div>
 
-        <section style={{ backgroundColor: '#ffffff', border: '1px solid #dde1e9', borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ backgroundColor: '#f0f2f7', borderBottom: '1px solid #dde1e9', padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 24, height: 24, backgroundColor: '#1a2744', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#c8a951', fontSize: 12, fontWeight: 700 }}>3</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#1a2744', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Verification Queue</span>
-              {queue.length > 0 && (
-                <span style={{ backgroundColor: '#1a2744', color: '#c8a951', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12 }}>{queue.length}</span>
-              )}
-            </div>
-            <button
-              onClick={processQueue}
-              disabled={pendingCount === 0 || processing}
-              style={{ padding: '10px 28px', backgroundColor: pendingCount > 0 && !processing ? '#c8a951' : '#d1d5db', color: pendingCount > 0 && !processing ? '#1a2744' : '#9ca3af', border: 'none', borderRadius: 4, fontSize: 14, fontWeight: 700, cursor: pendingCount > 0 && !processing ? 'pointer' : 'not-allowed', letterSpacing: '0.04em' }}
-            >
-              {processing ? 'Processing…' : `Verify ${pendingCount > 0 ? `(${pendingCount})` : 'Queue'}`}
-            </button>
-          </div>
-
-          <div style={{ padding: queue.length === 0 ? 40 : 0 }}>
-            {queue.length === 0 ? (
-              <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>??</div>
-                No labels queued. Fill in the application data and upload a label image to begin.
+                <div>
+                  <label style={styles.label}>Bottler Name & Address</label>
+                  <input style={styles.input} placeholder="Bottler Name & Address" value={app.bottlerNameAddress} onChange={(e) => updateField("bottlerNameAddress", e.target.value)} />
+                </div>
+                <div>
+                  <label style={styles.label}>Country of Origin</label>
+                  <input style={styles.input} placeholder="Country of Origin" value={app.countryOfOrigin} onChange={(e) => updateField("countryOfOrigin", e.target.value)} />
+                </div>
               </div>
-            ) : (
-              queue.map((item, idx) => (
-                <div key={item.id} style={{ borderBottom: idx < queue.length - 1 ? '1px solid #dde1e9' : 'none', padding: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: item.status === 'done' ? 16 : 0 }}>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2744' }}>{item.brandName}</div>
-                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{item.imageName}</div>
-                    </div>
-                    <div>
-                      {item.status === 'pending' && <span style={{ padding: '4px 12px', backgroundColor: '#f0f2f7', color: '#6b7280', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>Pending</span>}
-                      {item.status === 'processing' && <span style={{ padding: '4px 12px', backgroundColor: '#fef3c7', color: '#92400e', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>? Analyzing…</span>}
-                      {item.status === 'done' && (() => {
-                        const results = Object.values(item.result || {});
-                        const passed = results.filter((r) => r.pass).length;
-                        const total = results.length;
-                        const allPass = passed === total;
-                        return <span style={{ padding: '4px 12px', backgroundColor: allPass ? '#d1fae5' : '#fee2e2', color: allPass ? '#065f46' : '#991b1b', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>{passed}/{total} Passed</span>;
-                      })()}
-                      {item.status === 'error' && <span style={{ padding: '4px 12px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: 12, fontSize: 12, fontWeight: 600 }}>Error</span>}
-                    </div>
+            </div>
+          </section>
+
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>2 â€¢ Label Image</div>
+            <div style={styles.sectionBody}>
+              <div style={{ marginBottom: 10 }}>
+                <input id="file-input" type="file" accept="image/*" multiple onChange={handleFilesChange} />
+              </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button style={styles.buttonPrimary} onClick={addToQueue}>Add to Queue</button>
+                <button style={styles.buttonAccent} onClick={processQueue} disabled={processing || queue.length === 0}>{processing ? "Processing..." : `Verify Queue (${queue.length})`}</button>
+              </div>
+            </div>
+          </section>
+
+          <section style={styles.section}>
+            <div style={styles.sectionHeader}>3 â€¢ Verification Queue</div>
+            <div style={styles.sectionBody}>
+              {queue.length === 0 && <div style={{ color: "#374151" }}>No items queued.</div>}
+              {queue.map((it) => (
+                <div key={it.id} style={styles.queueItem}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700 }}>{it.application.brandName || "(no brand)"}</div>
+                    <div style={{ color: "#374151" }}>{it.status}</div>
                   </div>
-
-                  {item.status === 'done' && item.result && (
-                    <div style={{ border: '1px solid #dde1e9', borderRadius: 6, overflow: 'hidden' }}>
-                      {Object.entries(item.result).map(([key, val], i, arr) => (
-                        <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', backgroundColor: i % 2 === 0 ? '#ffffff' : '#f8f9fb', borderBottom: i < arr.length - 1 ? '1px solid #edf0f5' : 'none' }}>
-                          <div style={{ flexShrink: 0, marginTop: 1 }}>
-                            {val.pass
-                              ? <span style={{ display: 'inline-flex', width: 20, height: 20, backgroundColor: '#d1fae5', borderRadius: '50%', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#065f46' }}>?</span>
-                              : <span style={{ display: 'inline-flex', width: 20, height: 20, backgroundColor: '#fee2e2', borderRadius: '50%', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#991b1b' }}>?</span>
-                            }
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: '#4a5568', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{FIELD_LABELS[key] || key}</div>
-                            <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{val.text}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {item.status === 'error' && (
-                    <div style={{ marginTop: 12, padding: 12, backgroundColor: '#fee2e2', borderRadius: 6, fontSize: 13, color: '#991b1b' }}>
-                      {item.error}
-                    </div>
-                  )}
+                  <div style={{ marginBottom: 8 }}>
+                    {it.files.map((f: File, idx: number) => (
+                      <div key={idx} style={{ fontSize: 13, color: "#374151" }}>{f.name}</div>
+                    ))}
+                  </div>
+                  <div>{renderResult(it.result)}</div>
                 </div>
-              ))
-            )}
-          </div>
-        </section>
-      </main>
+              ))}
+            </div>
+          </section>
+        </main>
 
-      <footer style={{ borderTop: '1px solid #dde1e9', padding: '20px 32px', textAlign: 'center', marginTop: 40 }}>
-        <div style={{ fontSize: 11, color: '#9ca3af', letterSpacing: '0.05em' }}>TTB LABEL COMPLIANCE VERIFIER — PROTOTYPE — NOT FOR OFFICIAL USE</div>
-      </footer>
+        <footer style={styles.footer}>TTB LABEL COMPLIANCE VERIFIER â€” PROTOTYPE â€” NOT FOR OFFICIAL USE</footer>
+      </div>
     </div>
   );
 }

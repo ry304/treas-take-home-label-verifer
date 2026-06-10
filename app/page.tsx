@@ -596,7 +596,7 @@ export default function Home() {
             </div>
           </section>
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>2 • Application Data</div>
+            <div style={styles.sectionHeader}>2 • Single Application Data</div>
             <div style={styles.sectionBody}>
               <div style={styles.grid2}>
                 <div>

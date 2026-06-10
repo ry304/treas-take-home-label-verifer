@@ -8,13 +8,13 @@ https://treas-take-home-label-verifer.vercel.app
 
 ## Features
 
-- **AI-Powered Label Analysis** — Uses Claude claude-sonnet-4-5 vision to read and analyze label images
-- **Field-by-Field Verification** — Checks brand name, class/type, alcohol content, net contents, bottler name and address, country of origin, and government warning
-- **Exact Government Warning Validation** — Verifies the mandatory TTB warning statement word-for-word, including required all-caps formatting
-- **Batch Processing** — Queue multiple labels and process them all at once
-- **Fast Results** — Analysis returns in under 5 seconds per label
-- **Simple UI** — Clean, accessible interface designed for all technical skill levels
-- **Fuzzy Match Judgment** — AI handles minor formatting differences (e.g. capitalization variations) intelligently
+- **AI-Powered Label Analysis** ï¿½ Uses Claude claude-sonnet-4-5 vision to read and analyze label images
+- **Field-by-Field Verification** ï¿½ Checks brand name, class/type, alcohol content, net contents, bottler name and address, country of origin, and government warning
+- **Exact Government Warning Validation** ï¿½ Verifies the mandatory TTB warning statement word-for-word, including required all-caps formatting
+- **Batch Processing** ï¿½ Queue multiple labels and process them all at once
+- **Fast Results** ï¿½ Analysis returns in under 5 seconds per label
+- **Simple UI** ï¿½ Clean, accessible interface designed for all technical skill levels
+- **Fuzzy Match Judgment** ï¿½ AI handles minor formatting differences (e.g. capitalization variations) intelligently
 
 ## Setup and Run Instructions
 
@@ -62,6 +62,23 @@ npm start
 5. Click **Process Queue** to run AI verification on all queued labels
 6. Review the pass/fail results for each field
 
+## Bulk Import Workflow
+
+1. Open the **Bulk Import** section at the top of the page.
+2. Download the built-in CSV template or prepare a CSV/Excel file with these columns:
+   - Brand Name
+   - Class/Type
+   - Alcohol Content
+   - Net Contents
+   - Bottler Name & Address
+   - Country of Origin
+   - Image Filename
+3. Upload the CSV or Excel file using the bulk file picker.
+4. Upload the matching label image files using the bulk image picker.
+5. Click **Import All to Queue** to add all matched rows to the queue.
+6. The app matches images automatically by filename using the `Image Filename` column.
+7. If any rows do not have a matching image, a warning is shown.
+
 ## Approach and Technical Decisions
 
 ### Architecture
@@ -75,7 +92,7 @@ The application is built as a Next.js app with a server-side API route that prox
 
 ### Why Claude Vision?
 
-Claude's vision API was chosen because it handles the core requirements naturally — reading text from images, applying judgment to minor formatting differences, and validating exact text matches like the government warning statement. It also handles poor image quality and angled label photos gracefully, which was a stated requirement from the compliance team.
+Claude's vision API was chosen because it handles the core requirements naturally ï¿½ reading text from images, applying judgment to minor formatting differences, and validating exact text matches like the government warning statement. It also handles poor image quality and angled label photos gracefully, which was a stated requirement from the compliance team.
 
 ### Government Warning Validation
 

@@ -137,6 +137,7 @@ export default function Home() {
     input: { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 16 },
     buttonPrimary: { backgroundColor: "#1a2744", color: "#fff", padding: "10px 14px", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
     buttonAccent: { backgroundColor: "#c8a951", color: "#10213a", padding: "10px 14px", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
+    chooseButton: { backgroundColor: "#1a2744", color: "#fff", padding: "10px 14px", border: "1px solid #10213a", borderRadius: 4, cursor: "pointer", fontSize: 16 },
     queueItem: { padding: 12, border: "1px solid #e6eef8", borderRadius: 4, marginBottom: 10, background: "#ffffff" },
     footer: { padding: 12, textAlign: "center", fontSize: 12, color: "#6b7280", background: "#f1f5f9", marginTop: 12 },
   };
@@ -187,8 +188,18 @@ export default function Home() {
           <section style={styles.section}>
             <div style={styles.sectionHeader}>2 • Label Image</div>
             <div style={styles.sectionBody}>
-              <div style={{ marginBottom: 10 }}>
-                <input id="file-input" type="file" accept="image/*" multiple onChange={handleFilesChange} />
+              <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                <input id="file-input" type="file" accept="image/*" multiple onChange={handleFilesChange} style={{ display: "none" }} />
+                <button
+                  type="button"
+                  style={styles.chooseButton}
+                  onClick={() => (document.getElementById("file-input") as HTMLInputElement | null)?.click()}
+                >
+                  Choose Files
+                </button>
+                <div style={{ color: "#374151", fontSize: 14 }}>
+                  {files.length === 0 ? "No files selected" : files.map((f) => f.name).join(", ")}
+                </div>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
                 <button style={styles.buttonPrimary} onClick={addToQueue}>Add to Queue</button>

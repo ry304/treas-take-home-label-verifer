@@ -28,7 +28,6 @@ export default function Home() {
   const [bulkRows, setBulkRows] = useState<any[]>([]);
   const [bulkImages, setBulkImages] = useState<File[]>([]);
   const [bulkWarnings, setBulkWarnings] = useState<string[]>([]);
-  const [bulkMinimized, setBulkMinimized] = useState(true);
   const [queue, setQueue] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
 
@@ -517,15 +516,9 @@ export default function Home() {
 
         <main style={styles.body}>
           <section style={styles.section}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 }}>
-              <span>Bulk Import</span>
-              <button type="button" style={styles.toggleButton} onClick={() => setBulkMinimized((prev) => !prev)}>
-                {bulkMinimized ? "Expand" : "Minimize"}
-              </button>
-            </div>
-            {!bulkMinimized && (
-              <div style={styles.sectionBody}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={styles.sectionHeader}>1 • Bulk Import</div>
+            <div style={styles.sectionBody}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <button style={styles.buttonPrimary} type="button" onClick={downloadTemplate}>
                     Download Template
@@ -601,10 +594,9 @@ export default function Home() {
                 )}
               </div>
             </div>
-          )}
           </section>
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>1 • Application Data</div>
+            <div style={styles.sectionHeader}>2 • Application Data</div>
             <div style={styles.sectionBody}>
               <div style={styles.grid2}>
                 <div>
@@ -638,7 +630,7 @@ export default function Home() {
           </section>
 
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>2 • Label Image</div>
+            <div style={styles.sectionHeader}>3 • Label Image</div>
             <div style={styles.sectionBody}>
               <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
                 <input id="file-input" type="file" accept="image/*" multiple onChange={handleFilesChange} style={{ display: "none" }} />
@@ -662,7 +654,7 @@ export default function Home() {
 
           <section style={styles.section}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 }}>
-              <span>3 • Verification Queue</span>
+              <span>4 • Verification Queue</span>
               {queue.some((item) => item.status === "done") && (
                 <button type="button" style={styles.toggleButton} onClick={exportAllToCSV}>
                   Export All Results to CSV

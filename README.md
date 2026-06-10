@@ -108,10 +108,10 @@ The Anthropic API key is stored as a server-side environment variable and never 
 
 ## Assumptions Made
 
-- Label images are provided as standard image files (JPEG, PNG, etc.)
+- Labels may contain required information across multiple panels — the app analyzes only the image provided and cannot verify information on panels not captured in the uploaded photo
 - The government warning statement follows the standard TTB format for all beverage types
-- Agents will provide accurate application data for comparison
-- The tool is a standalone prototype and does not integrate with the COLA system
+- The app processes labels sequentially rather than in parallel — very large batch queues will take longer to process as each label is verified individually
+- Reporting is generated client-side at the time of verification — reports reflect the AI analysis at that moment and are not stored or retrievable after the session ends
 - Minor capitalization differences in brand names are flagged but noted as likely matches, per feedback from experienced agents
 
 ## Tools Used

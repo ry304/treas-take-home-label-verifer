@@ -8,13 +8,13 @@ https://treas-take-home-label-verifer.vercel.app
 
 ## Features
 
-- **AI-Powered Label Analysis** � Uses Claude claude-sonnet-4-5 vision to read and analyze label images
-- **Field-by-Field Verification** � Checks brand name, class/type, alcohol content, net contents, bottler name and address, country of origin, and government warning
-- **Exact Government Warning Validation** � Verifies the mandatory TTB warning statement word-for-word, including required all-caps formatting
-- **Batch Processing** � Queue multiple labels and process them all at once
-- **Fast Results** � Analysis returns in under 5 seconds per label
-- **Simple UI** � Clean, accessible interface designed for all technical skill levels
-- **Fuzzy Match Judgment** � AI handles minor formatting differences (e.g. capitalization variations) intelligently
+- **AI-Powered Label Analysis**  Uses Claude claude-sonnet-4-5 vision to read and analyze label images
+- **Field-by-Field Verification**  Checks brand name, class/type, alcohol content, net contents, bottler name and address, country of origin, and government warning
+- **Exact Government Warning Validation**  Verifies the mandatory TTB warning statement word-for-word, including required all-caps formatting
+- **Batch Processing**  Queue multiple labels and process them all at once
+- **Fast Results**  Analysis returns in under 5 seconds per label
+- **Simple UI**  Clean, accessible interface designed for all technical skill levels
+- **Fuzzy Match Judgment**  AI handles minor formatting differences (e.g. capitalization variations) intelligently
 
 ## Setup and Run Instructions
 
@@ -92,7 +92,7 @@ The application is built as a Next.js app with a server-side API route that prox
 
 ### Why Claude Vision?
 
-Claude's vision API was chosen because it handles the core requirements naturally � reading text from images, applying judgment to minor formatting differences, and validating exact text matches like the government warning statement. It also handles poor image quality and angled label photos gracefully, which was a stated requirement from the compliance team.
+Claude's vision API was chosen because it handles the core requirements naturally reading text from images, applying judgment to minor formatting differences, and validating exact text matches like the government warning statement. It also handles poor image quality and angled label photos gracefully, which was a stated requirement from the compliance team.
 
 ### Government Warning Validation
 

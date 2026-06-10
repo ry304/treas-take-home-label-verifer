@@ -27,7 +27,7 @@ export default function Home() {
   const [bulkRows, setBulkRows] = useState<any[]>([]);
   const [bulkImages, setBulkImages] = useState<File[]>([]);
   const [bulkWarnings, setBulkWarnings] = useState<string[]>([]);
-  const [bulkMinimized, setBulkMinimized] = useState(false);
+  const [bulkMinimized, setBulkMinimized] = useState(true);
   const [queue, setQueue] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
 

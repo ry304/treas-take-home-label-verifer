@@ -27,6 +27,7 @@ export default function Home() {
   const [bulkRows, setBulkRows] = useState<any[]>([]);
   const [bulkImages, setBulkImages] = useState<File[]>([]);
   const [bulkWarnings, setBulkWarnings] = useState<string[]>([]);
+  const [bulkMinimized, setBulkMinimized] = useState(false);
   const [queue, setQueue] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
 
@@ -283,6 +284,7 @@ export default function Home() {
     section: { marginBottom: 18, borderRadius: 4, overflow: "hidden" },
     sectionHeader: { backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 },
     sectionBody: { padding: 12 },
+    toggleButton: { backgroundColor: "transparent", color: "#c8a951", border: "1px solid #c8a951", borderRadius: 4, padding: "6px 10px", cursor: "pointer", fontSize: 12, fontWeight: 700 },
     grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
     label: { display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", marginBottom: 6, color: "#1f2937" },
     input: { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 16 },
@@ -305,9 +307,15 @@ export default function Home() {
 
         <main style={styles.body}>
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>Bulk Import</div>
-            <div style={styles.sectionBody}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 }}>
+              <span>Bulk Import</span>
+              <button type="button" style={styles.toggleButton} onClick={() => setBulkMinimized((prev) => !prev)}>
+                {bulkMinimized ? "Expand" : "Minimize"}
+              </button>
+            </div>
+            {!bulkMinimized && (
+              <div style={styles.sectionBody}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <button style={styles.buttonPrimary} type="button" onClick={downloadTemplate}>
                     Download Template
@@ -383,6 +391,7 @@ export default function Home() {
                 )}
               </div>
             </div>
+          )}
           </section>
           <section style={styles.section}>
             <div style={styles.sectionHeader}>1 • Application Data</div>

@@ -122,9 +122,12 @@ The Anthropic API key is stored as a server-side environment variable and never 
 
 ## Tools Used
 
-- Next.js 15
+- Next.js 15.3.8
 - React 18
 - Tailwind CSS
 - Anthropic Claude API (claude-sonnet-4-5)
+- SheetJS (xlsx) - for CSV and Excel bulk import parsing
+- jsPDF - for client-side PDF report generation
+- node-fetch - for server-side API requests
 - Vercel (deployment)
 - Node.js

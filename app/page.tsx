@@ -137,7 +137,7 @@ export default function Home() {
     input: { width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 4, fontSize: 16 },
     buttonPrimary: { backgroundColor: "#1a2744", color: "#fff", padding: "10px 14px", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
     buttonAccent: { backgroundColor: "#c8a951", color: "#10213a", padding: "10px 14px", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 16 },
-    chooseButton: { backgroundColor: "#1a2744", color: "#fff", padding: "10px 14px", border: "1px solid #10213a", borderRadius: 4, cursor: "pointer", fontSize: 16 },
+    chooseButton: { backgroundColor: "#464b55", color: "#fff", padding: "10px 14px", border: "1px solid #10213a", borderRadius: 4, cursor: "pointer", fontSize: 16 },
     queueItem: { padding: 12, border: "1px solid #e6eef8", borderRadius: 4, marginBottom: 10, background: "#ffffff" },
     footer: { padding: 12, textAlign: "center", fontSize: 12, color: "#6b7280", background: "#f1f5f9", marginTop: 12 },
   };

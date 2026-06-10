@@ -30,6 +30,41 @@ export default function Home() {
     setApp((s) => ({ ...s, [k]: v }));
   }
 
+  const fieldLabelMap: Record<string, string> = {
+    brandName: "Brand Name",
+    classType: "Class / Type",
+    alcoholContent: "Alcohol Content",
+    netContents: "Net Contents",
+    bottlerNameAddress: "Bottler Name & Address",
+    countryOfOrigin: "Country of Origin",
+    governmentWarning: "Government Warning",
+  };
+
+  function getFieldLabel(key: string) {
+    return fieldLabelMap[key] || key;
+  }
+
+  function getSummaryBadge(result: any) {
+    if (!result) return null;
+    if (result.error) {
+      return {
+        text: "Error",
+        background: "#dc2626",
+        color: "#fff",
+      };
+    }
+    const r = result.result || result.raw || result;
+    const rows = Object.entries(r).filter(([, v]: any) => v && typeof v.pass === "boolean");
+    const passedCount = rows.filter(([, v]: any) => v.pass).length;
+    const totalCount = rows.length;
+    const allPassed = totalCount > 0 && passedCount === totalCount;
+    return {
+      text: `${passedCount}/${totalCount} Passed`,
+      background: allPassed ? "#16a34a" : "#dc2626",
+      color: "#ffffff",
+    };
+  }
+
   function handleFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files;
     if (!f) return;
@@ -112,7 +147,7 @@ export default function Home() {
                 {pass ? "✓" : "✕"}
               </div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 16 }}>{k}</div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>{getFieldLabel(k)}</div>
                 <div style={{ fontSize: 13, color: "#374151" }}>{v?.text}</div>
               </div>
             </div>
@@ -214,9 +249,20 @@ export default function Home() {
               {queue.length === 0 && <div style={{ color: "#374151" }}>No items queued.</div>}
               {queue.map((it) => (
                 <div key={it.id} style={styles.queueItem}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                     <div style={{ fontWeight: 700 }}>{it.application.brandName || "(no brand)"}</div>
-                    <div style={{ color: "#374151" }}>{it.status}</div>
+                    {it.status === "done" ? (
+                      (() => {
+                        const badge = getSummaryBadge(it.result);
+                        return (
+                          <div style={{ display: "inline-flex", alignItems: "center", padding: "4px 10px", borderRadius: 999, background: badge?.background, color: badge?.color, fontSize: 13, fontWeight: 700 }}>
+                            {badge?.text}
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div style={{ color: "#374151" }}>{it.status}</div>
+                    )}
                   </div>
                   <div style={{ marginBottom: 8 }}>
                     {it.files.map((f: File, idx: number) => (

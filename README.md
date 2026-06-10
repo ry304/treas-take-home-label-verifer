@@ -8,13 +8,15 @@ https://treas-take-home-label-verifer.vercel.app
 
 ## Features
 
-- **AI-Powered Label Analysis**  Uses Claude claude-sonnet-4-5 vision to read and analyze label images
-- **Field-by-Field Verification**  Checks brand name, class/type, alcohol content, net contents, bottler name and address, country of origin, and government warning
-- **Exact Government Warning Validation**  Verifies the mandatory TTB warning statement word-for-word, including required all-caps formatting
-- **Batch Processing**  Queue multiple labels and process them all at once
-- **Fast Results**  Analysis returns in under 5 seconds per label
-- **Simple UI**  Clean, accessible interface designed for all technical skill levels
-- **Fuzzy Match Judgment**  AI handles minor formatting differences (e.g. capitalization variations) intelligently
+- **AI-Powered Label Analysis:**  Uses Claude claude-sonnet-4-5 vision to read and analyze label images
+- **Field-by-Field Verification:**  Checks brand name, class/type, alcohol content, net contents, bottler name and address, country of origin, and government warning
+- **Exact Government Warning Validation:**  Verifies the mandatory TTB warning statement word-for-word, including required all-caps formatting
+- **Batch Processing:**  Queue multiple labels and process them all at once
+- **Fast Results:**  Analysis returns in under 5 seconds per label
+- **Simple UI:**  Clean, accessible interface designed for all technical skill levels
+- **Fuzzy Match Judgment:**  AI handles minor formatting differences (e.g. capitalization variations) intelligently
+- **PDF Reports:**  Download a per-label compliance verification report as a formatted PDF
+- **CSV Export:**  Export all verification results from the queue to a single CSV file
 
 ## Setup and Run Instructions
 
@@ -101,6 +103,10 @@ The required TTB government warning statement is hardcoded server-side and passe
 ### Batch Processing
 
 Labels are queued client-side with their associated application data and images (base64 encoded). When the queue is processed, each label is sent to the API route sequentially and results are displayed inline.
+
+### Reporting
+
+Each processed label includes a **Download Report** action that generates a formatted PDF (via jsPDF) showing the brand name, image filename, verification timestamp, a field-by-field pass/fail table with the AI's reasoning for each field, and a summary of fields passed vs. failed. A **Export All Results to CSV** button is also available to export the field-by-field results for every label in the queue to a single CSV file. Both reports are generated entirely client-side from the verification results already in memory.
 
 ### Security
 

@@ -495,7 +495,7 @@ export default function Home() {
           </section>
         </main>
 
-        <footer style={styles.footer}>TTB LABEL COMPLIANCE VERIFIER — PROTOTYPE — NOT FOR OFFICIAL USE — Developed by Ryan Caplinger</footer>
+        <footer style={styles.footer}>TTB LABEL COMPLIANCE VERIFIER — PROTOTYPE — NOT FOR OFFICIAL USE — DEVELOPED BY RYAN CAPLINGER</footer>
       </div>
     </div>
   );

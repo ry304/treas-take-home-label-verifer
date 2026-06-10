@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
 
 type Application = {
   brandName: string;
@@ -27,7 +28,6 @@ export default function Home() {
   const [bulkRows, setBulkRows] = useState<any[]>([]);
   const [bulkImages, setBulkImages] = useState<File[]>([]);
   const [bulkWarnings, setBulkWarnings] = useState<string[]>([]);
-  const [bulkMinimized, setBulkMinimized] = useState(true);
   const [queue, setQueue] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
 
@@ -47,6 +47,33 @@ export default function Home() {
 
   function getFieldLabel(key: string) {
     return fieldLabelMap[key] || key;
+  }
+
+  const reportFieldOrder = [
+    "brandName",
+    "classType",
+    "alcoholContent",
+    "netContents",
+    "bottlerNameAddress",
+    "countryOfOrigin",
+    "governmentWarning",
+  ];
+
+  function getFieldResult(result: any, key: string): FieldResult | null {
+    if (!result || result.error) return null;
+    if (result.raw && !result.result) return null;
+    const r = result.result || result.raw || result;
+    const v = r?.[key];
+    if (v && typeof v.pass === "boolean") return v as FieldResult;
+    return null;
+  }
+
+  function csvEscape(value: string) {
+    const str = String(value ?? "");
+    if (/[",\n]/.test(str)) {
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
   }
 
   function getSummaryBadge(result: any) {
@@ -232,7 +259,7 @@ export default function Home() {
           body: JSON.stringify({ application: item.application, images }),
         });
         const data = await res.json();
-        newQueue[i] = { ...newQueue[i], status: "done", result: data };
+        newQueue[i] = { ...newQueue[i], status: "done", result: data, verifiedAt: new Date().toISOString() };
         setQueue([...newQueue]);
       } catch (e: any) {
         newQueue[i] = { ...newQueue[i], status: "error", result: { error: e?.message || String(e) } };
@@ -274,6 +301,188 @@ export default function Home() {
     );
   }
 
+  function downloadPDFReport(item: any) {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 14;
+    const colWidths = [48, 18, pageWidth - 2 * marginX - 48 - 18];
+    let y = 18;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("U.S. Department of the Treasury — TTB", marginX, y);
+    y += 8;
+    doc.setFontSize(12);
+    doc.text("Label Compliance Verification Report", marginX, y);
+    y += 6;
+
+    doc.setDrawColor(26, 39, 68);
+    doc.setLineWidth(0.5);
+    doc.line(marginX, y, pageWidth - marginX, y);
+    y += 8;
+
+    const imageNames = (item.files || []).map((f: File) => f.name).join(", ");
+    const verifiedAt = item.verifiedAt ? new Date(item.verifiedAt).toLocaleString() : "";
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Brand Name: ${item.application?.brandName || "(no brand)"}`, marginX, y);
+    y += 6;
+    doc.text(`Image File: ${imageNames || "(none)"}`, marginX, y);
+    y += 6;
+    doc.text(`Date/Time of Verification: ${verifiedAt}`, marginX, y);
+    y += 8;
+
+    // Table header
+    doc.setFillColor(26, 39, 68);
+    doc.setTextColor(255, 255, 255);
+    doc.rect(marginX, y, pageWidth - marginX * 2, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Field", marginX + 2, y + 5.5);
+    doc.text("Status", marginX + colWidths[0] + 2, y + 5.5);
+    doc.text("AI Reasoning", marginX + colWidths[0] + colWidths[1] + 2, y + 5.5);
+    y += 8;
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+
+    let passCount = 0;
+    let totalCount = 0;
+
+    reportFieldOrder.forEach((key, idx) => {
+      const fr = getFieldResult(item.result, key);
+      if (!fr) return;
+      totalCount += 1;
+      if (fr.pass) passCount += 1;
+
+      const reasoningLines = doc.splitTextToSize(fr.text || "", colWidths[2] - 4);
+      const rowHeight = Math.max(8, reasoningLines.length * 5 + 3);
+
+      if (y + rowHeight > pageHeight - 25) {
+        doc.addPage();
+        y = 18;
+      }
+
+      const bg = idx % 2 === 0 ? [255, 255, 255] : [241, 245, 249];
+      doc.setFillColor(bg[0], bg[1], bg[2]);
+      doc.rect(marginX, y, pageWidth - marginX * 2, rowHeight, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text(getFieldLabel(key), marginX + 2, y + 5);
+
+      if (fr.pass) {
+        doc.setTextColor(22, 163, 74);
+      } else {
+        doc.setTextColor(220, 38, 38);
+      }
+      doc.text(fr.pass ? "PASS" : "FAIL", marginX + colWidths[0] + 2, y + 5);
+
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "normal");
+      doc.text(reasoningLines, marginX + colWidths[0] + colWidths[1] + 2, y + 5);
+
+      y += rowHeight;
+    });
+
+    y += 8;
+    if (y > pageHeight - 35) {
+      doc.addPage();
+      y = 18;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Summary", marginX, y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Fields Passed: ${passCount} / ${totalCount}`, marginX, y);
+    y += 6;
+    doc.text(`Fields Failed: ${totalCount - passCount} / ${totalCount}`, marginX, y);
+
+    const pageCount = doc.getNumberOfPages();
+    for (let p = 1; p <= pageCount; p += 1) {
+      doc.setPage(p);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(107, 114, 128);
+      doc.text(
+        "TTB LABEL COMPLIANCE VERIFIER — PROTOTYPE — NOT FOR OFFICIAL USE",
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: "center" }
+      );
+    }
+
+    const safeBrand = (item.application?.brandName || "label").replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+    doc.save(`ttb-report-${safeBrand}.pdf`);
+  }
+
+  function exportAllToCSV() {
+    const headers = [
+      "Brand Name",
+      "Image File",
+      "Verified At",
+      "Brand Name Result",
+      "Brand Name Notes",
+      "Class/Type Result",
+      "Class/Type Notes",
+      "Alcohol Content Result",
+      "Alcohol Content Notes",
+      "Net Contents Result",
+      "Net Contents Notes",
+      "Bottler Name & Address Result",
+      "Bottler Name & Address Notes",
+      "Country of Origin Result",
+      "Country of Origin Notes",
+      "Government Warning Result",
+      "Government Warning Notes",
+      "Overall Status",
+    ];
+
+    const rows = queue
+      .filter((item) => item.status === "done")
+      .map((item) => {
+        const row: string[] = [];
+        row.push(item.application?.brandName || "");
+        row.push((item.files || []).map((f: File) => f.name).join("; "));
+        row.push(item.verifiedAt ? new Date(item.verifiedAt).toLocaleString() : "");
+
+        let totalCount = 0;
+        let passCount = 0;
+        reportFieldOrder.forEach((key) => {
+          const fr = getFieldResult(item.result, key);
+          if (fr) {
+            totalCount += 1;
+            if (fr.pass) passCount += 1;
+            row.push(fr.pass ? "PASS" : "FAIL");
+            row.push(fr.text || "");
+          } else {
+            row.push("");
+            row.push("");
+          }
+        });
+
+        const overall = item.result?.error || totalCount === 0 || passCount !== totalCount ? "FAIL" : "PASS";
+        row.push(overall);
+        return row;
+      });
+
+    const csvLines = [headers.map(csvEscape).join(","), ...rows.map((row) => row.map(csvEscape).join(","))];
+    const csv = csvLines.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "ttb-verification-results.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   const styles: Record<string, React.CSSProperties> = {
     page: { backgroundColor: "#f8f9fb", minHeight: "100vh", fontFamily: "Arial, Helvetica, sans-serif", padding: 24 },
     container: { maxWidth: 980, margin: "0 auto", background: "#ffffff", borderRadius: 6, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" },
@@ -307,15 +516,9 @@ export default function Home() {
 
         <main style={styles.body}>
           <section style={styles.section}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 }}>
-              <span>Bulk Import</span>
-              <button type="button" style={styles.toggleButton} onClick={() => setBulkMinimized((prev) => !prev)}>
-                {bulkMinimized ? "Expand" : "Minimize"}
-              </button>
-            </div>
-            {!bulkMinimized && (
-              <div style={styles.sectionBody}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={styles.sectionHeader}>1 • Bulk Import</div>
+            <div style={styles.sectionBody}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <button style={styles.buttonPrimary} type="button" onClick={downloadTemplate}>
                     Download Template
@@ -391,10 +594,9 @@ export default function Home() {
                 )}
               </div>
             </div>
-          )}
           </section>
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>1 • Application Data</div>
+            <div style={styles.sectionHeader}>2 • Application Data</div>
             <div style={styles.sectionBody}>
               <div style={styles.grid2}>
                 <div>
@@ -428,7 +630,7 @@ export default function Home() {
           </section>
 
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>2 • Label Image</div>
+            <div style={styles.sectionHeader}>3 • Label Image</div>
             <div style={styles.sectionBody}>
               <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
                 <input id="file-input" type="file" accept="image/*" multiple onChange={handleFilesChange} style={{ display: "none" }} />
@@ -451,7 +653,14 @@ export default function Home() {
           </section>
 
           <section style={styles.section}>
-            <div style={styles.sectionHeader}>3 • Verification Queue</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#10213a", color: "#ffffff", padding: "8px 12px", textTransform: "uppercase", fontSize: 12, fontWeight: 700 }}>
+              <span>4 • Verification Queue</span>
+              {queue.some((item) => item.status === "done") && (
+                <button type="button" style={styles.toggleButton} onClick={exportAllToCSV}>
+                  Export All Results to CSV
+                </button>
+              )}
+            </div>
             <div style={styles.sectionBody}>
               {queue.length > 0 && (
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
@@ -477,6 +686,11 @@ export default function Home() {
                         })()
                       ) : (
                         <div style={{ color: "#374151" }}>{it.status}</div>
+                      )}
+                      {it.status === "done" && (
+                        <button type="button" style={styles.buttonInlineAccept} onClick={() => downloadPDFReport(it)}>
+                          Download Report
+                        </button>
                       )}
                       <button type="button" style={styles.buttonInlineAccept} onClick={() => removeQueueItem(it.id)}>
                         Remove
